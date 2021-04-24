@@ -1813,6 +1813,9 @@ BOOL _sessionInterrupted = NO;
                         @"type" : codeMetadata.type,
                         @"data" : [NSNull null],
                         @"rawData" : [NSNull null],
+                        @"index":[NSNull null],
+                        @"total":[NSNull null],
+                        @"code_parity":[NSNull null],
                         @"bounds": @{
                             @"origin": @{
                                     @"x": [NSString stringWithFormat:@"%f", transformed.bounds.origin.x],
@@ -1825,6 +1828,7 @@ BOOL _sessionInterrupted = NO;
                             }
                         }
                     ];
+                      
 
                     NSData *rawData;
                     // If we're on ios11 then we can use `descriptor` to access the raw data of the barcode.
@@ -1840,10 +1844,22 @@ BOOL _sessionInterrupted = NO;
                     } else {
                         rawData = [codeMetadata valueForKeyPath:@"_internal.basicDescriptor.BarcodeRawData"];
                     }
-
+                   
                     // Now that we have the raw data of the barcode translate it into a hex string to pass to the JS
                     const unsigned char *dataBuffer = (const unsigned char *)[rawData bytes];
+                    
                     if (dataBuffer) {
+                        if ((dataBuffer[0] & 0xf0) == 0x30){
+                        int current = (dataBuffer[0] & 0x0f);
+                        int code_total = ((dataBuffer[1] & 0xf0) >> 4) + 1;
+                        int code_parity = ((dataBuffer[1] & 0x0f) << 4) | ((dataBuffer[2] & 0xf0) >> 4);
+                        [event setObject:[NSNumber numberWithInt:current] forKey:@"index"];
+                        [event setObject:[NSNumber numberWithInt:code_total] forKey:@"total"];
+                        [event setObject:[NSNumber numberWithInt:code_parity] forKey:@"code_parity"];
+                        NSLog(@"current:%d ",current);
+                        NSLog(@"code_total:%d ",code_total);
+                        NSLog(@"code_parity:%d ",code_parity);
+                    }
                         NSMutableString     *rawDataHexString  = [NSMutableString stringWithCapacity:([rawData length] * 2)];
                         for (int i = 0; i < [rawData length]; ++i) {
                             [rawDataHexString appendString:[NSString stringWithFormat:@"%02lx", (unsigned long)dataBuffer[i]]];

@@ -1,6 +1,7 @@
 package org.reactnative.camera.events;
 
 import android.util.Base64;
+import android.util.Log;
 
 import androidx.core.util.Pools;
 
@@ -74,7 +75,21 @@ public class BarCodeReadEvent extends Event<BarCodeReadEvent> {
     event.putString("data", mBarCode.getText());
 
     byte[] rawBytes = mBarCode.getRawBytes();
+
+    
     if (rawBytes != null && rawBytes.length > 0) {
+      
+       if ((rawBytes[0] & 0xf0) == 0x30){
+         
+        int current = (rawBytes[0] & 0x0f);
+        int code_total = ((rawBytes[1] & 0xf0) >> 4) + 1;
+        int code_parity = ((rawBytes[1] & 0x0f) << 4) | ((rawBytes[2] & 0xf0) >> 4);
+      
+        event.putInt("index",current);
+        event.putInt("total",code_total);
+        event.putInt("code_parity",code_parity);
+    }
+
       Formatter formatter = new Formatter();
       for (byte b : rawBytes) {
         formatter.format("%02x", b);
