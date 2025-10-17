@@ -9,12 +9,16 @@ import com.google.mlkit.vision.barcode.BarcodeScanning;
 import com.google.mlkit.vision.common.InputImage;
 
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class QrCodeScannerTask {
 
     private BarcodeScanner scanner;
     private QrCodeScannerDelegate mDelegate;
     private final String TAG = "QrCodeScannerTask";
+
+    private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
 
     public QrCodeScannerTask() {
         BarcodeScannerOptions options =
@@ -30,34 +34,36 @@ public class QrCodeScannerTask {
     }
 
     public void processFrame(byte[] imageData, int width, int height, int rotation) {
+        backgroundExecutor.execute(()-> {
+            try {
+                InputImage image = InputImage.fromByteArray(
+                        imageData,
+                        width,
+                        height,
+                        rotation,
+                        InputImage.IMAGE_FORMAT_NV21
+                );
 
-        try {
-            InputImage image = InputImage.fromByteArray(
-                    imageData,
-                    width,
-                    height,
-                    rotation,
-                    InputImage.IMAGE_FORMAT_NV21
-            );
+                scanner.process(image)
 
-            scanner.process(image)
-                    .addOnSuccessListener(barcodes -> {
-                        if (!barcodes.isEmpty()) {
-                            ArrayList<String> qrData = new ArrayList<>();
-                            for (Barcode barcode : barcodes) {
-                                qrData.add(barcode.getDisplayValue());
+                        .addOnSuccessListener(barcodes -> {
+                            if (!barcodes.isEmpty()) {
+                                ArrayList<String> qrData = new ArrayList<>();
+                                for (Barcode barcode : barcodes) {
+                                    qrData.add(barcode.getDisplayValue());
+                                }
+                                mDelegate.sendQrCodeData(qrData);
                             }
-                            mDelegate.sendQrCodeData(qrData);
-                        }
-                        mDelegate.onQrCodeScanningTaskCompleted();
-                    })
-                    .addOnFailureListener(e -> {
-                        Log.e(TAG, "error scan qr: " + e.getMessage());
-                        mDelegate.onQrCodeScanningTaskCompleted();
-                    });
-        } catch (Exception e) {
-            Log.e(TAG, "error InputImage: " + e.getMessage());
-            mDelegate.onQrCodeScanningTaskCompleted();
-        }
+                            mDelegate.onQrCodeScanningTaskCompleted();
+                        })
+                        .addOnFailureListener(e -> {
+                            Log.e(TAG, "error scan qr: " + e.getMessage());
+                            mDelegate.onQrCodeScanningTaskCompleted();
+                        });
+            } catch (Exception e) {
+                Log.e(TAG, "error InputImage: " + e.getMessage());
+                mDelegate.onQrCodeScanningTaskCompleted();
+            }
+        });
     }
 }

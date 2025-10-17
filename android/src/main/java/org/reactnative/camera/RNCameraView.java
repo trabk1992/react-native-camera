@@ -96,6 +96,8 @@ public class RNCameraView extends CameraView implements LifecycleEventListener, 
   private int mCameraViewWidth = 0;
   private int mCameraViewHeight = 0;
 
+  private long lastFrameTime = 0L;
+
   public RNCameraView(ThemedReactContext themedReactContext) {
     super(themedReactContext, true);
     mThemedReactContext = themedReactContext;
@@ -182,7 +184,11 @@ public class RNCameraView extends CameraView implements LifecycleEventListener, 
           BarCodeScannerAsyncTaskDelegate delegate = (BarCodeScannerAsyncTaskDelegate) cameraView;
           new BarCodeScannerAsyncTask(delegate, mMultiFormatReader, data, width, height, mLimitScanArea, mScanAreaX, mScanAreaY, mScanAreaWidth, mScanAreaHeight, mCameraViewWidth, mCameraViewHeight, getAspectRatio().toFloat()).execute();
         }
-
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastFrameTime < 300) {
+          return;
+        }
+        lastFrameTime = currentTime;
         if (willCallQrCodeTask) {
           qrCodeScannerTaskLock = true;
           if (qrCodeScannerTask == null) {
